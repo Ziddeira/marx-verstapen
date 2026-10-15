@@ -41,7 +41,7 @@ Ou use a extensão Live Server do VS Code. No GitHub Pages funciona direto.
 
 ## Desempenho
 
-Os arquivos `.webp` desta pasta são, na verdade, PNGs com extensão `.webp` (cerca de 500 KB cada, 99 MB no total). Convertê-los para WebP de verdade reduziria o total para algo em torno de 10 MB, sem precisar mudar nenhum código.
+Os frames são WebP (qualidade 88, 828×462), com cerca de 45 KB cada e 9,2 MB no total. Originalmente eram PNGs com extensão `.webp` (98 MB); a versão original continua no histórico do git, no primeiro commit.
 
 ---
 
