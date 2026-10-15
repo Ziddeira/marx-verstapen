@@ -1,5 +1,7 @@
-# Vídeo-fonte dos frames (não é usado pelo site)
+# Arquivos-fonte (não usados pelo site)
 *.mp4
+*.mov
+*.zip
 .claude/
 .DS_Store
 Thumbs.db

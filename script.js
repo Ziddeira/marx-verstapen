@@ -11,23 +11,29 @@
     prefix: "frame-",
     ext: ".webp",
     pad: 4,                      // frame-0001 → 4 dígitos
-    first: 3,                    // frames 1–2 têm barra preta e outro enquadramento: ignorados
-    last: 200,
+    first: 1,
+    last: 199,
+    aspect: 3832 / 2126,         // proporção dos quadros (4K sem as bordas pretas)
+    // Resoluções disponíveis, uma subpasta cada (frameia-sequencia/720/frame-0001.webp …)
+    tiers: [
+      { dir: "720", label: "720p", width: 1280 },
+      { dir: "1080", label: "1080p", width: 1920 },
+      { dir: "4k", label: "4K", width: 3832 },
+    ],
+    mobileMaxTier: "1080",       // celulares não baixam o pacote 4K
+    decodeWindow: { "1080": 12, "4k": 6 }, // quadros nítidos mantidos decodificados ao redor da posição
     concurrency: 6,              // downloads simultâneos
     smoothing: 0.14,             // 0–1: quanto maior, mais rápido o frame alcança o scroll
     // Liga o progresso do scroll (0–1) ao frame, para cada capítulo cair na cena certa:
-    // pit stop de frente (3–22) → saída lateral (23–108) → onboard (110–200).
+    // pit stop de frente (1–30) → saída lateral (31–55) → onboard lateral (56–100) → T-cam (101–199).
     keyframes: [
-      [0.00, 3],
-      [0.18, 8],
-      [0.40, 22],
-      [0.62, 75],
-      [0.82, 130],
-      [1.00, 200],
+      [0.00, 1],
+      [0.18, 6],
+      [0.40, 30],
+      [0.62, 92],
+      [0.82, 150],
+      [1.00, 199],
     ],
-    // Selo "F1 REPLAY" gravado nos frames (coordenadas na imagem original de 828×462).
-    // É coberto por um remendo clonado da área vizinha, com bordas suaves.
-    badge: { x: 0, y: 0, w: 192, h: 94, cloneGap: 4 },
   };
 
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -40,7 +46,8 @@
     const t = clamp((v - a) / (b - a));
     return t * t * (3 - 2 * t);
   };
-  const frameSrc = (n) => `${CONFIG.path}${CONFIG.prefix}${String(n).padStart(CONFIG.pad, "0")}${CONFIG.ext}`;
+  const frameSrc = (dir, n) =>
+    `${CONFIG.path}${dir}/${CONFIG.prefix}${String(n).padStart(CONFIG.pad, "0")}${CONFIG.ext}`;
 
   document.documentElement.classList.remove("no-js");
 
@@ -64,20 +71,71 @@
   const nav = $("#nav");
 
   /* =========================================================
-     1. PRÉ-CARREGAMENTO
-     Ordem progressiva: primeiro frames espaçados (a animação já
-     funciona inteira em baixa "resolução temporal"), depois os
-     intermediários. O canvas sempre desenha o frame carregado
-     mais próximo, então nunca há tela vazia.
+     1. CANVAS RESPONSIVO + ESCOLHA DE RESOLUÇÃO
      ========================================================= */
-  const images = new Array(CONFIG.last + 1).fill(null);
-  let loadedCount = 0;
+  let dpr = 1;
+  let needsDraw = true;
 
-  function buildOrder() {
-    if (reduceMotion.matches) {
-      // Movimento reduzido: só os quadros-chave de cada capítulo.
-      return [...new Set([CONFIG.first, ...chapters.map(keyFrameOf)])];
-    }
+  function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.round(sticky.clientWidth * dpr);
+    canvas.height = Math.round(sticky.clientHeight * dpr);
+    needsDraw = true;
+    const t = pickTier();
+    // Só sobe de resolução (nunca descarta o que já baixou ao diminuir a janela)
+    if (!mainTier || CONFIG.tiers.indexOf(t) > CONFIG.tiers.indexOf(mainTier)) setMainTier(t);
+  }
+
+  // Largura em pixels reais que o quadro ocupa no modo "cover"
+  const neededWidth = () => Math.max(canvas.width, canvas.height * CONFIG.aspect);
+
+  function pickTier() {
+    const byDir = (d) => CONFIG.tiers.find((t) => t.dir === d);
+    const forced = byDir(new URLSearchParams(location.search).get("q")); // ?q=4k | 1080 | 720
+    if (forced) return forced;
+    if (navigator.connection && navigator.connection.saveData) return CONFIG.tiers[0];
+    const small = Math.min(window.innerWidth, window.innerHeight) < 820;
+    const cap = small ? CONFIG.tiers.indexOf(byDir(CONFIG.mobileMaxTier)) : CONFIG.tiers.length - 1;
+    const need = neededWidth() * 0.9; // aceita até ~10% de ampliação
+    for (let i = 0; i <= cap; i++) if (CONFIG.tiers[i].width >= need) return CONFIG.tiers[i];
+    return CONFIG.tiers[cap];
+  }
+
+  // Cálculo de "cover": preenche a tela inteira mantendo a proporção do vídeo,
+  // cortando apenas o excedente (nunca distorce, nunca mostra bordas).
+  function coverRect() {
+    const cw = canvas.width, ch = canvas.height;
+    const w = Math.max(cw, ch * CONFIG.aspect) * 1.004;
+    const h = w / CONFIG.aspect;
+    // No celular em pé, o foco fica um pouco à esquerda do centro (onde está o carro/cockpit)
+    const fx = cw < ch ? 0.47 : 0.5;
+    return { x: (cw - w) * fx, y: (ch - h) * 0.5, w, h };
+  }
+
+  /* =========================================================
+     2. CARREGAMENTO EM CAMADAS
+     • Base (720p): <img> leves para todos os quadros. Abre a página
+       rápido e serve de reserva durante rolagens rápidas.
+     • Principal (1080p ou 4K): baixada compactada (Blob). Só uma
+       janela de quadros ao redor da posição atual é decodificada
+       (ImageBitmap) e o resto é liberado. Assim o 4K fica nítido
+       sem ocupar gigabytes de memória.
+     ========================================================= */
+  const BASE = CONFIG.tiers[0];
+  const base = new Array(CONFIG.last + 1).fill(null);   // HTMLImageElement
+  let mainTier = null;
+  let blobs = [];                                       // Blob por quadro (camada principal)
+  const bitmaps = new Map();                            // n → ImageBitmap decodificado
+  const decoding = new Set();
+  let baseLoaded = 0, mainLoaded = 0, mainTotal = 0;
+  let mainToken = 0;
+  let current = CONFIG.first;
+
+  let releaseStart;
+  const started = new Promise((r) => (releaseStart = r));
+
+  function progressiveOrder(only) {
+    if (only) return only;
     const order = [CONFIG.first];
     const seen = new Set(order);
     for (const step of [32, 16, 8, 4, 2, 1]) {
@@ -89,44 +147,119 @@
     return order;
   }
 
-  function loadFrame(n) {
+  // Executa as tarefas com N em paralelo
+  async function pool(items, worker, n = CONFIG.concurrency) {
+    let i = 0;
+    await Promise.all(Array.from({ length: n }, async () => {
+      while (i < items.length) { const k = i++; await worker(items[k], k); }
+    }));
+  }
+
+  function loadBase(n) {
     return new Promise((resolve) => {
       const img = new Image();
       img.decoding = "async";
-      img.src = frameSrc(n);
-      const done = () => { images[n] = img; loadedCount++; resolve(true); };
-      if (img.decode) img.decode().then(done, () => (img.complete && img.naturalWidth ? done() : resolve(false)));
-      else { img.onload = done; img.onerror = () => resolve(false); }
+      img.src = frameSrc(BASE.dir, n);
+      const done = () => { base[n] = img; baseLoaded++; needsDraw = true; resolve(); };
+      img.decode().then(done, () => (img.naturalWidth ? done() : resolve()));
     });
   }
 
-  async function preload(order, essentialCount, onEssential) {
-    let next = 0;
-    let essentialDone = 0;
-    let fired = false;
-    const worker = async () => {
-      while (next < order.length) {
-        const i = next++;
-        await loadFrame(order[i]);
-        if (i < essentialCount) essentialDone++;
-        const pct = essentialDone / essentialCount;
-        updateLoader(pct);
-        updateBuffer();
-        if (!fired && essentialDone >= essentialCount) { fired = true; onEssential(); }
-        needsDraw = true;
-      }
-    };
-    await Promise.all(Array.from({ length: CONFIG.concurrency }, worker));
-    if (!fired) onEssential(); // garante a saída do loader mesmo com falhas
+  const keyFrames = () => [...new Set([CONFIG.first, ...chapters.map(keyFrameOf)])];
+
+  async function loadBaseLayer(onEssential) {
+    const order = progressiveOrder(reduceMotion.matches ? keyFrames() : null);
+    // Essenciais: um a cada 16 quadros (~13 imagens leves) antes de liberar a página
+    const essential = reduceMotion.matches ? order.length
+      : Math.max(1, order.findIndex((n) => (n - CONFIG.first) % 16 !== 0 && n !== CONFIG.last));
+    let done = 0, fired = false;
+    await pool(order, async (n, k) => {
+      await loadBase(n);
+      if (k < essential) { done++; updateLoader(done / essential); }
+      if (!fired && done >= essential) { fired = true; onEssential(); }
+      updateBuffer();
+    });
+    if (!fired) onEssential();
   }
 
-  function nearestLoaded(n) {
-    if (images[n]) return n;
+  function setMainTier(t) {
+    mainTier = t;
+    const token = ++mainToken;
+    bitmaps.forEach((b) => b.close && b.close());
+    bitmaps.clear();
+    blobs = new Array(CONFIG.last + 1).fill(null);
+    mainLoaded = 0;
+    needsDraw = true;
+    if (t === BASE) { mainTotal = 0; updateBuffer(); return; }
+    const order = progressiveOrder(reduceMotion.matches ? keyFrames() : null);
+    mainTotal = order.length;
+    updateBuffer();
+    started.then(() => {
+      // Começa pelos quadros perto da posição atual
+      const c = Math.round(current);
+      order.sort((a, b) => (Math.abs(a - c) < 8 ? 0 : 1) - (Math.abs(b - c) < 8 ? 0 : 1));
+      return pool(order, async (n) => {
+        if (token !== mainToken) return;
+        try {
+          const res = await fetch(frameSrc(t.dir, n));
+          if (!res.ok) return;
+          const blob = await res.blob();
+          if (token !== mainToken) return;
+          blobs[n] = blob;
+          mainLoaded++;
+          updateBuffer();
+        } catch (e) { /* segue com a camada base */ }
+      }, 4);
+    });
+  }
+
+  // Mantém decodificados apenas os quadros nítidos perto da posição atual
+  let lastDir = 1;
+  function updateDecodeWindow(pos, dir) {
+    if (!mainTier || mainTier === BASE || typeof createImageBitmap !== "function") return;
+    const W = CONFIG.decodeWindow[mainTier.dir] || 8;
+    const c = Math.round(pos);
+    const ahead = dir >= 0 ? W : Math.ceil(W / 2);
+    const behind = dir >= 0 ? Math.ceil(W / 2) : W;
+    const lo = Math.max(CONFIG.first, c - behind), hi = Math.min(CONFIG.last, c + ahead);
+    // libera o que saiu da janela
+    for (const [n, bm] of bitmaps) {
+      if (n < lo - 2 || n > hi + 2) { if (bm.close) bm.close(); bitmaps.delete(n); }
+    }
+    // decodifica do mais próximo ao mais distante, no máximo 2 por vez
+    if (decoding.size >= 2) return;
+    const want = [];
+    for (let n = lo; n <= hi; n++) if (blobs[n] && !bitmaps.has(n) && !decoding.has(n)) want.push(n);
+    want.sort((a, b) => Math.abs(a - pos) - Math.abs(b - pos));
+    const token = mainToken;
+    for (const n of want) {
+      if (decoding.size >= 2) break;
+      decoding.add(n);
+      createImageBitmap(blobs[n]).then((bm) => {
+        decoding.delete(n);
+        const cc = Math.round(current);
+        if (token !== mainToken || n < cc - W - 2 || n > cc + W + 2) { if (bm.close) bm.close(); return; }
+        bitmaps.set(n, bm);
+        if (Math.abs(n - current) < 1.5) needsDraw = true;
+      }, () => decoding.delete(n));
+    }
+  }
+
+  function nearestBase(n) {
+    if (base[n]) return n;
     for (let d = 1; d <= TOTAL; d++) {
-      if (n - d >= CONFIG.first && images[n - d]) return n - d;
-      if (n + d <= CONFIG.last && images[n + d]) return n + d;
+      if (n - d >= CONFIG.first && base[n - d]) return n - d;
+      if (n + d <= CONFIG.last && base[n + d]) return n + d;
     }
     return -1;
+  }
+
+  // Melhor imagem disponível para o quadro n: nítida decodificada → base exata → base mais próxima
+  function sourceFor(n) {
+    if (bitmaps.has(n)) return { img: bitmaps.get(n), exact: true, sharp: true };
+    if (base[n]) return { img: base[n], exact: true, sharp: false };
+    const k = nearestBase(n);
+    return k < 0 ? null : { img: base[k], exact: false, sharp: false };
   }
 
   /* ---------- Loader: luzes de largada ---------- */
@@ -138,13 +271,16 @@
   }
 
   function updateBuffer() {
-    const pct = Math.round((loadedCount / buildOrderLength) * 100);
-    hudBuffer.textContent = `BUF ${String(pct).padStart(3, "0")}%`;
+    const useMain = mainTier && mainTier !== BASE;
+    const total = useMain ? mainTotal : (reduceMotion.matches ? keyFrames().length : TOTAL);
+    const pct = Math.min(100, Math.round(((useMain ? mainLoaded : baseLoaded) / total) * 100));
+    hudBuffer.textContent = `${(mainTier || BASE).label} ${String(pct).padStart(3, "0")}%`;
     hudBuffer.classList.toggle("is-full", pct >= 100);
   }
 
   function hideLoader() {
     updateLoader(1);
+    releaseStart(); // a camada nítida só começa a baixar depois que a página abre
     const out = () => {
       loader.classList.add("is-out"); // "lights out and away we go"
       setTimeout(() => {
@@ -155,88 +291,32 @@
     setTimeout(out, reduceMotion.matches ? 0 : 650);
   }
 
-  /* =========================================================
-     2. CANVAS RESPONSIVO
-     ========================================================= */
-  let cssW = 0, cssH = 0, dpr = 1;
-  let needsDraw = true;
-
-  function resize() {
-    dpr = Math.min(window.devicePixelRatio || 1, 2);
-    cssW = sticky.clientWidth;
-    cssH = sticky.clientHeight;
-    canvas.width = Math.round(cssW * dpr);
-    canvas.height = Math.round(cssH * dpr);
-    needsDraw = true;
-  }
-  new ResizeObserver(resize).observe(sticky);
-  resize();
-
-  // Cálculo de "cover": preenche a tela inteira mantendo a proporção 16:9 do vídeo,
-  // cortando apenas o excedente (nunca distorce, nunca mostra bordas).
-  function coverRect(iw, ih) {
-    const cw = canvas.width, ch = canvas.height;
-    const s = Math.max(cw / iw, ch / ih) * 1.015; // leve overscan para esconder artefatos de borda
-    const w = iw * s, h = ih * s;
-    // No celular em pé, o foco fica um pouco à esquerda do centro (onde está o carro/cockpit)
-    const fx = cw < ch ? 0.47 : 0.5;
-    return { x: (cw - w) * fx, y: (ch - h) * 0.5, s };
-  }
-
-  // Remendo para o selo do canto: clone da área vizinha + máscara com bordas suaves.
-  // O selo encosta nas bordas superior e esquerda do vídeo, então só as bordas
-  // direita e inferior do remendo precisam de degradê.
-  const B = CONFIG.badge;
-  const patch = document.createElement("canvas");
-  patch.width = B.w; patch.height = B.h;
-  const pctx = patch.getContext("2d");
-  const mask = document.createElement("canvas");
-  mask.width = B.w; mask.height = B.h;
-  (() => {
-    const m = mask.getContext("2d");
-    const gx = m.createLinearGradient(0, 0, B.w, 0);
-    gx.addColorStop(0, "#000"); gx.addColorStop(0.8, "#000"); gx.addColorStop(1, "rgba(0,0,0,0)");
-    m.fillStyle = gx; m.fillRect(0, 0, B.w, B.h);
-    m.globalCompositeOperation = "destination-in";
-    const gy = m.createLinearGradient(0, 0, 0, B.h);
-    gy.addColorStop(0, "#000"); gy.addColorStop(0.74, "#000"); gy.addColorStop(1, "rgba(0,0,0,0)");
-    m.fillStyle = gy; m.fillRect(0, 0, B.w, B.h);
-  })();
-
-  function drawBadgePatch(img, r) {
-    pctx.globalCompositeOperation = "source-over";
-    pctx.clearRect(0, 0, B.w, B.h);
-    // Clona a faixa logo à direita do selo (mesma iluminação e mesmo borrão de movimento)
-    pctx.drawImage(img, B.x + B.w + B.cloneGap, B.y, B.w, B.h, 0, 0, B.w, B.h);
-    pctx.globalCompositeOperation = "destination-in";
-    pctx.drawImage(mask, 0, 0);
-    ctx.drawImage(patch, r.x + B.x * r.s, r.y + B.y * r.s, B.w * r.s, B.h * r.s);
-  }
-
-  let drawnPos = -1;
+  /* ---------- Desenho ---------- */
+  let drawnPos = -1, drawnSharp = false;
   function draw(pos) {
     const a = Math.floor(pos);
     const frac = pos - a;
-    const ia = nearestLoaded(a);
-    if (ia < 0) return;
-    const imgA = images[ia];
-    const r = coverRect(imgA.naturalWidth, imgA.naturalHeight);
-    const w = imgA.naturalWidth * r.s, h = imgA.naturalHeight * r.s;
+    const A = sourceFor(a);
+    if (!A) return;
+    const r = coverRect();
 
     ctx.globalAlpha = 1;
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = "high";
-    ctx.drawImage(imgA, r.x, r.y, w, h);
+    ctx.drawImage(A.img, r.x, r.y, r.w, r.h);
 
-    // Mistura com o próximo frame para uma transição sem degraus
+    // Mistura com o próximo quadro para uma transição sem degraus
     const b = a + 1;
-    if (frac > 0.02 && b <= CONFIG.last && images[b] && ia === a) {
-      ctx.globalAlpha = frac;
-      ctx.drawImage(images[b], r.x, r.y, w, h);
-      ctx.globalAlpha = 1;
+    if (frac > 0.02 && b <= CONFIG.last && A.exact) {
+      const B = sourceFor(b);
+      if (B && B.exact) {
+        ctx.globalAlpha = frac;
+        ctx.drawImage(B.img, r.x, r.y, r.w, r.h);
+        ctx.globalAlpha = 1;
+      }
     }
-    drawBadgePatch(frac > 0.5 && images[b] ? images[b] : imgA, r);
     drawnPos = pos;
+    drawnSharp = A.sharp;
     needsDraw = false;
   }
 
@@ -293,7 +373,6 @@
     railButtons.forEach((btn, i) => btn.classList.toggle("is-active", i === active));
   }
 
-  let current = CONFIG.first;
   let lastTime = performance.now();
 
   function tick(now) {
@@ -312,7 +391,11 @@
       if (Math.abs(target - current) < 0.002) current = target;
     }
 
+    const moving = Math.abs(target - current) > 0.01;
+    if (moving) lastDir = Math.sign(target - current) || lastDir;
+    updateDecodeWindow(current, lastDir);
     if (needsDraw || Math.abs(current - drawnPos) > 0.004) draw(current);
+    else if (!drawnSharp && bitmaps.has(Math.floor(current))) draw(current); // a nitidez chegou
 
     if (p !== lastP) {
       updateChapters(p);
@@ -391,16 +474,12 @@
   /* =========================================================
      5. INÍCIO
      ========================================================= */
-  const order = buildOrder();
-  const buildOrderLength = order.length;
-  // Essenciais: frames de 16 em 16 (~14 imagens) antes de liberar a página; o resto carrega em segundo plano
-  const firstFine = order.findIndex((n) => (n - CONFIG.first) % 16 !== 0 && n !== CONFIG.last);
-  const essentialCount = reduceMotion.matches || firstFine < 0 ? order.length : firstFine;
-
   document.body.classList.add("is-loading");
   updateLoader(0);
+  new ResizeObserver(resize).observe(sticky);
+  resize();
   requestAnimationFrame(tick);
-  preload(order, essentialCount, hideLoader);
+  loadBaseLayer(hideLoader);
 
   // Se a preferência de movimento mudar com a página aberta, redesenha
   reduceMotion.addEventListener?.("change", () => { needsDraw = true; lastP = -1; });
