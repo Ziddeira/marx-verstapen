@@ -1,0 +1,5 @@
+# Vídeo-fonte dos frames (não é usado pelo site)
+*.mp4
+.claude/
+.DS_Store
+Thumbs.db

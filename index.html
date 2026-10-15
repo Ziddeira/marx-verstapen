@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="pt-BR" class="no-js">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Max Verstappen · Oracle Red Bull Racing</title>
+  <meta name="description" content="Max Verstappen e a Oracle Red Bull Racing: tetracampeão mundial de Fórmula 1. Uma experiência cinematográfica em scroll.">
+  <meta name="theme-color" content="#05070f">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Cpath d=%27M9 0h55l-9 64H0z%27 fill=%27%23e10a32%27/%3E%3Ctext x=%2732%27 y=%2744%27 font-family=%27Arial Black,Arial%27 font-weight=%27900%27 font-style=%27italic%27 font-size=%2728%27 fill=%27%23fff%27 text-anchor=%27middle%27%3EMV%3C/text%3E%3C/svg%3E">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,500;0,700;0,800;0,900;1,700;1,800;1,900&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <!-- Primeiro frame da sequência: começa a baixar antes do JavaScript -->
+  <link rel="preload" as="image" href="frameia-sequencia/frame-0003.webp">
+  <link rel="stylesheet" href="styles.css">
+  <noscript><style>.loader{display:none}</style></noscript>
+</head>
+<body>
+  <a class="skip" href="#piloto">Pular a animação</a>
+
+  <!-- ============ LOADER: luzes de largada ============ -->
+  <div class="loader" id="loader" role="status" aria-live="polite">
+    <div class="loader__lights" aria-hidden="true">
+      <span></span><span></span><span></span><span></span><span></span>
+    </div>
+    <p class="loader__label"><span id="loaderPct">00</span><small>%</small></p>
+    <p class="loader__hint">Aquecendo os pneus</p>
+  </div>
+
+  <!-- ============ NAV ============ -->
+  <header class="nav" id="nav">
+    <a class="nav__brand" href="#topo" aria-label="Max Verstappen, voltar ao topo">
+      <span class="nav__mono">MV</span>
+      <span class="nav__name">Verstappen</span>
+    </a>
+    <nav class="nav__links" id="navLinks" aria-label="Seções">
+      <a href="#sequencia">Pit Lane</a>
+      <a href="#piloto">Piloto</a>
+      <a href="#recordes">Recordes</a>
+      <a href="#trajetoria">Trajetória</a>
+      <a href="#equipe">Equipe</a>
+    </nav>
+    <button class="nav__toggle" id="navToggle" aria-expanded="false" aria-controls="navLinks">
+      <span class="sr">Abrir menu</span><i></i><i></i>
+    </button>
+  </header>
+
+  <main id="topo">
+    <!-- ============ SEQUÊNCIA EM SCROLL ============ -->
+    <section class="seq" id="sequencia" aria-label="Sequência do pit stop em Marina Bay">
+      <div class="seq__sticky">
+        <canvas class="seq__canvas" id="seqCanvas" role="img"
+          aria-label="Pit stop noturno do carro da Red Bull em Singapura, da troca de pneus até a saída do pit lane em câmera onboard."></canvas>
+        <noscript><img class="seq__fallback" src="frameia-sequencia/frame-0090.webp" alt=""></noscript>
+        <div class="seq__shade" aria-hidden="true"></div>
+        <div class="grain" aria-hidden="true"></div>
+
+        <!-- HUD -->
+        <div class="hud" aria-hidden="true">
+          <span class="hud__corner hud__corner--tl"></span>
+          <span class="hud__corner hud__corner--tr"></span>
+          <span class="hud__corner hud__corner--bl"></span>
+          <span class="hud__corner hud__corner--br"></span>
+          <div class="hud__meta">
+            <span class="hud__rec"><b></b>Marina Bay · Night Race</span>
+            <span>Pit Lane · Car 3</span>
+          </div>
+          <div class="hud__foot">
+            <span class="hud__frame">FRM <b id="hudFrame">003</b>/200</span>
+            <div class="hud__bar"><i id="hudBar"></i></div>
+            <span class="hud__buffer" id="hudBuffer">BUF 000%</span>
+          </div>
+        </div>
+
+        <!-- Capítulos -->
+        <div class="chapters">
+          <article class="chapter chapter--hero" data-start="0" data-end="0.16">
+            <p class="eyebrow">Oracle Red Bull Racing · Tetracampeão mundial</p>
+            <h1 class="hero-title">
+              <span class="hero-title__first">Max</span>
+              <span class="hero-title__last">Verstappen</span>
+            </h1>
+            <p class="chapter__lead">Role para entrar no pit lane.</p>
+            <span class="scroll-cue" aria-hidden="true"><i></i></span>
+          </article>
+
+          <article class="chapter chapter--right" data-start="0.2" data-end="0.4">
+            <p class="eyebrow"><span class="num">01</span> O pit stop</p>
+            <h2 class="chapter__title">Dois segundos.<br><em>Vinte pares de mãos.</em></h2>
+            <p class="chapter__text">Quatro pneus trocados antes que você termine de piscar. Na Red Bull, o pit stop é ensaiado milhares de vezes por temporada até virar reflexo.</p>
+          </article>
+
+          <article class="chapter chapter--left" data-start="0.43" data-end="0.62">
+            <p class="eyebrow"><span class="num">02</span> A máquina</p>
+            <h2 class="chapter__title">Engenharia<br><em>em movimento.</em></h2>
+            <p class="chapter__text">Fibra de carbono, aerodinâmica esculpida no túnel de vento de Milton Keynes e um motor híbrido que entrega cada cavalo no milissegundo certo.</p>
+          </article>
+
+          <article class="chapter chapter--right" data-start="0.65" data-end="0.82">
+            <p class="eyebrow"><span class="num">03</span> Onboard</p>
+            <h2 class="chapter__title">A visão<br><em>do campeão.</em></h2>
+            <p class="chapter__text">Mãos no volante, olhos na linha branca. Do cockpit, o mundo se resume a uma faixa de asfalto e à próxima decisão.</p>
+          </article>
+
+          <article class="chapter chapter--center" data-start="0.85" data-end="1.01">
+            <p class="eyebrow"><span class="num">04</span> Pit exit</p>
+            <h2 class="chapter__title chapter__title--xl">Luz verde.</h2>
+            <a class="btn" href="#piloto">Conheça o piloto <span aria-hidden="true">→</span></a>
+          </article>
+        </div>
+
+        <!-- Navegação por capítulos -->
+        <ol class="rail" id="rail" aria-label="Capítulos da sequência">
+          <li><button data-go="0" aria-label="Início">00</button></li>
+          <li><button data-go="0.28" aria-label="O pit stop">01</button></li>
+          <li><button data-go="0.52" aria-label="A máquina">02</button></li>
+          <li><button data-go="0.73" aria-label="Onboard">03</button></li>
+          <li><button data-go="0.95" aria-label="Pit exit">04</button></li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- ============ MARQUEE ============ -->
+    <div class="marquee" aria-hidden="true">
+      <div class="marquee__track">
+        <span>Simply lovely</span><b>✦</b><span>Max Verstappen</span><b>✦</b><span>Oracle Red Bull Racing</span><b>✦</b><span>Tetracampeão</span><b>✦</b>
+        <span>Simply lovely</span><b>✦</b><span>Max Verstappen</span><b>✦</b><span>Oracle Red Bull Racing</span><b>✦</b><span>Tetracampeão</span><b>✦</b>
+      </div>
+    </div>
+
+    <!-- ============ PILOTO ============ -->
+    <section class="section piloto" id="piloto">
+      <div class="piloto__media reveal">
+        <figure class="photo photo--tall">
+          <img src="IMG_0455.JPG" alt="Max Verstappen de costas, com macacão da Oracle Red Bull Racing, olhando para o lado." width="588" height="393" loading="lazy" decoding="async">
+          <figcaption>Hasselt, BE · 30.09.1997</figcaption>
+        </figure>
+        <span class="piloto__ghost" aria-hidden="true">3</span>
+      </div>
+      <div class="piloto__copy">
+        <p class="eyebrow reveal">O piloto</p>
+        <h2 class="section__title reveal">Nasceu<br>para <em>acelerar.</em></h2>
+        <p class="reveal">Filho do ex-piloto de F1 Jos Verstappen e da kartista Sophie Kumpen, Max cresceu entre boxes e motores. Aos 17 anos, tornou-se o piloto mais jovem a largar em um Grande Prêmio de Fórmula 1. Um ano depois, em sua estreia pela Red Bull, venceu.</p>
+        <p class="reveal">Agressivo nas ultrapassagens, cirúrgico na chuva e implacável quando o carro está à altura, ele transformou a década em uma era com o próprio nome.</p>
+        <dl class="specs reveal">
+          <div><dt>Nacionalidade</dt><dd>Holandesa</dd></div>
+          <div><dt>Estreia na F1</dt><dd>Austrália 2015</dd></div>
+          <div><dt>Primeira vitória</dt><dd>Espanha 2016</dd></div>
+          <div><dt>Equipe</dt><dd>Red Bull desde 2016</dd></div>
+        </dl>
+      </div>
+    </section>
+
+    <!-- ============ RECORDES ============ -->
+    <section class="section recordes" id="recordes">
+      <header class="section__head">
+        <p class="eyebrow reveal">Números que reescreveram a história</p>
+        <h2 class="section__title reveal">Recordes</h2>
+      </header>
+      <ul class="stats">
+        <li class="stat reveal">
+          <span class="stat__num" data-count="4">4</span>
+          <span class="stat__label">Títulos mundiais consecutivos</span>
+          <span class="stat__note">2021 · 2022 · 2023 · 2024</span>
+        </li>
+        <li class="stat reveal">
+          <span class="stat__num" data-count="19">19</span>
+          <span class="stat__label">Vitórias em uma única temporada</span>
+          <span class="stat__note">Recorde absoluto · 2023</span>
+        </li>
+        <li class="stat reveal">
+          <span class="stat__num" data-count="10">10</span>
+          <span class="stat__label">Vitórias seguidas</span>
+          <span class="stat__note">Maior sequência da história · 2023</span>
+        </li>
+        <li class="stat reveal">
+          <span class="stat__num" data-count="18">18</span>
+          <span class="stat__label">Anos de idade na primeira vitória</span>
+          <span class="stat__note">Vencedor mais jovem da F1 · GP da Espanha 2016</span>
+        </li>
+      </ul>
+    </section>
+
+    <!-- ============ QUATRO ============ -->
+    <section class="section quatro" id="quatro" aria-label="Quatro títulos">
+      <span class="quatro__digit" aria-hidden="true">4</span>
+      <figure class="photo photo--portrait quatro__photo reveal">
+        <img src="IMG_0454.JPG" alt="Max Verstappen sorrindo e mostrando quatro dedos, celebrando o quarto título mundial." width="400" height="500" loading="lazy" decoding="async">
+      </figure>
+      <div class="quatro__copy">
+        <p class="eyebrow reveal">Las Vegas · 2024</p>
+        <h2 class="section__title reveal">Quatro.</h2>
+        <p class="reveal">Quatro dedos sob as luzes da Strip. Com o tetracampeonato, Max entrou para um clube de apenas seis pilotos com quatro ou mais títulos mundiais na história da Fórmula 1.</p>
+      </div>
+    </section>
+
+    <!-- ============ TRAJETÓRIA ============ -->
+    <section class="section trajetoria" id="trajetoria">
+      <header class="section__head">
+        <p class="eyebrow reveal">De Toro Rosso ao topo</p>
+        <h2 class="section__title reveal">Trajetória</h2>
+      </header>
+      <ol class="timeline">
+        <li class="reveal"><time>2015</time><h3>Estreia aos 17</h3><p>Toro Rosso, GP da Austrália. O mais jovem a largar na história da categoria.</p></li>
+        <li class="reveal"><time>2016</time><h3>Vitória na estreia</h3><p>Promovido à Red Bull, vence logo na primeira corrida pela equipe, em Barcelona.</p></li>
+        <li class="reveal"><time>2021</time><h3>Campeão mundial</h3><p>Última volta em Abu Dhabi decide uma das temporadas mais disputadas de todos os tempos.</p></li>
+        <li class="reveal"><time>2022</time><h3>Bicampeão</h3><p>Quinze vitórias e título garantido com antecedência, no Japão.</p></li>
+        <li class="reveal"><time>2023</time><h3>Domínio total</h3><p>Dezenove vitórias em vinte e duas corridas. Uma temporada sem precedentes.</p></li>
+        <li class="reveal"><time>2024</time><h3>Tetracampeão</h3><p>Título confirmado em Las Vegas, consagrando uma era.</p></li>
+      </ol>
+    </section>
+
+    <!-- ============ EQUIPE ============ -->
+    <section class="section equipe" id="equipe">
+      <div class="equipe__inner">
+        <header class="section__head">
+          <p class="eyebrow reveal">Milton Keynes, Reino Unido</p>
+          <h2 class="section__title reveal">Oracle<br>Red Bull <em>Racing</em></h2>
+        </header>
+        <p class="equipe__lead reveal">Da compra da antiga Jaguar em 2005 a uma das forças mais dominantes do esporte. A Red Bull Racing provou que uma marca de energético poderia construir campeões, e fez isso duas vezes, com Sebastian Vettel e Max Verstappen.</p>
+        <ul class="team-grid">
+          <li class="reveal"><b>2005</b><span>Primeira temporada na F1</span></li>
+          <li class="reveal"><b>6</b><span>Títulos de construtores</span></li>
+          <li class="reveal"><b>8</b><span>Títulos de pilotos</span></li>
+          <li class="reveal"><b>&lt;2s</b><span>Pit stops de elite</span></li>
+        </ul>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============ FOOTER ============ -->
+  <footer class="footer">
+    <p class="footer__big" aria-hidden="true">Simply lovely.</p>
+    <div class="footer__row">
+      <p>Projeto conceitual de fã, sem afiliação com Max Verstappen, Red Bull Racing ou Formula 1. Imagens e marcas pertencem aos seus respectivos donos.</p>
+      <a href="#topo" class="footer__top">Voltar ao topo ↑</a>
+    </div>
+  </footer>
+
+  <script src="script.js" defer></script>
+</body>
+</html>
